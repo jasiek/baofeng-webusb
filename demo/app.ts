@@ -1,9 +1,16 @@
 import { factory, WebSerialBackend } from '../src/browser';
+import {
+  runDownloadScenario,
+  runUploadScenario,
+  runSynthWriteVerifyScenario,
+  SessionRunner
+} from '../src/scenarios/bf888';
 
 const statusEl = document.getElementById('status') as HTMLDivElement;
 const selectBtn = document.getElementById('selectPort') as HTMLButtonElement;
 const downloadBtn = document.getElementById('download') as HTMLButtonElement;
 const uploadBtn = document.getElementById('upload') as HTMLButtonElement;
+const testBtn = document.getElementById('testScenario') as HTMLButtonElement;
 const fileInput = document.getElementById('file') as HTMLInputElement;
 const modelSelect = document.getElementById('model') as HTMLSelectElement;
 
@@ -16,6 +23,7 @@ function log(message: string) {
 function enableActions(enabled: boolean) {
   downloadBtn.disabled = !enabled;
   uploadBtn.disabled = !enabled;
+  testBtn.disabled = !enabled;
 }
 
 selectBtn.addEventListener('click', async () => {
@@ -33,18 +41,13 @@ downloadBtn.addEventListener('click', async () => {
   if (!port) return;
   const model = modelSelect.value as 'bf-888';
 
-  await withSession(port, model, async driver => {
-    log('Downloading codeplug...');
-    const data = await driver.readCodeplug();
-    const blob = new Blob([data], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${model}-codeplug.bin`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    log(`Downloaded ${data.length} bytes.`);
-  });
+  const runSession = createSessionRunner(port, model);
+  try {
+    const data = await runDownloadScenario(runSession, { log });
+    saveBlob(data, `${model}-codeplug.bin`);
+  } catch (err) {
+    log(`Operation failed: ${stringifyError(err)}`);
+  }
 });
 
 uploadBtn.addEventListener('click', async () => {
@@ -56,33 +59,54 @@ uploadBtn.addEventListener('click', async () => {
   }
   const model = modelSelect.value as 'bf-888';
 
-  await withSession(port, model, async driver => {
-    log('Uploading codeplug...');
-    const buffer = await file.arrayBuffer();
-    const data = new Uint8Array(buffer);
-    await driver.writeCodeplug(data);
-    log(`Uploaded ${data.length} bytes.`);
-  });
-});
-
-async function withSession(
-  port: SerialPort,
-  model: 'bf-888',
-  fn: (driver: ReturnType<typeof factory.createRadio>) => Promise<void>
-) {
-  const backend = new WebSerialBackend(port, { baudRate: 9600 });
-  const driver = factory.createRadio(model, backend, {
-    log
-  });
-
+  const buffer = await file.arrayBuffer();
+  const data = new Uint8Array(buffer);
+  const runSession = createSessionRunner(port, model);
   try {
-    await driver.connect();
-    await fn(driver);
+    await runUploadScenario(runSession, data, { log });
   } catch (err) {
     log(`Operation failed: ${stringifyError(err)}`);
-  } finally {
-    await driver.disconnect();
   }
+});
+
+testBtn.addEventListener('click', async () => {
+  if (!port) return;
+  const model = modelSelect.value as 'bf-888';
+  const runSession = createSessionRunner(port, model);
+  try {
+    await runSynthWriteVerifyScenario(runSession, { log });
+  } catch (err) {
+    log(`Operation failed: ${stringifyError(err)}`);
+  }
+});
+
+function createSessionRunner(port: SerialPort, model: 'bf-888'): SessionRunner {
+  return async fn => {
+    const backend = new WebSerialBackend(port, { baudRate: 9600 });
+    const driver = factory.createRadio(model, backend, {
+      log
+    });
+
+    try {
+      await driver.connect();
+      return await fn(driver);
+    } catch (err) {
+      log(`Operation failed: ${stringifyError(err)}`);
+      throw err;
+    } finally {
+      await driver.disconnect();
+    }
+  };
+}
+
+function saveBlob(data: Uint8Array, filename: string) {
+  const blob = new Blob([data], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function stringifyError(err: unknown): string {
