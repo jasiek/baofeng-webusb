@@ -1,5 +1,4 @@
-import { factory } from '../src/index';
-import { WebSerialBackend } from '../src/web/webSerialBackend';
+import { factory, WebSerialBackend } from '../src/browser';
 
 const statusEl = document.getElementById('status') as HTMLDivElement;
 const selectBtn = document.getElementById('selectPort') as HTMLButtonElement;
