@@ -1,0 +1,10 @@
+- When adding support for a new radio:
+  - consult the CHIRP project for a reference implementation (https://github.com/kk7ds/chirp).
+  - ensure the implementation will work both when running as a standalone program and via the WebSerial backend.
+- General notes about radio behavior
+  - some radios may restart once they leave the programming state
+  - it may not be possible to read and write a codeplug in a single session
+- General rules for this project
+  - every radio must have test scenarios which, at minimum test writing a codeplug, reading it back and comparing
+  - after every completed chunk of work, commit your changes with a message summarizing the change
+  - if needed, update the README.md file
