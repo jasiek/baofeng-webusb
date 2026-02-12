@@ -188,11 +188,11 @@ function buildHeader(command: 'R' | 'W', address: number, length: number): Uint8
 }
 
 function encodeCommand(command: string): Uint8Array {
-  return new Uint8Array(Buffer.from(command, 'binary'));
+  return asciiEncode(command);
 }
 
 function decodeAscii(data: Uint8Array): string {
-  return Buffer.from(data).toString('ascii');
+  return asciiDecode(data);
 }
 
 function buffersEqual(a: Uint8Array, b: Uint8Array): boolean {
@@ -211,4 +211,29 @@ function bufferToHex(data: Uint8Array): string {
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const asciiEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+const asciiDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('ascii') : null;
+
+function asciiEncode(value: string): Uint8Array {
+  if (asciiEncoder) {
+    return asciiEncoder.encode(value);
+  }
+  const out = new Uint8Array(value.length);
+  for (let i = 0; i < value.length; i += 1) {
+    out[i] = value.charCodeAt(i) & 0x7f;
+  }
+  return out;
+}
+
+function asciiDecode(data: Uint8Array): string {
+  if (asciiDecoder) {
+    return asciiDecoder.decode(data);
+  }
+  let out = '';
+  for (let i = 0; i < data.length; i += 1) {
+    out += String.fromCharCode(data[i]);
+  }
+  return out;
 }
