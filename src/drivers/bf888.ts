@@ -39,10 +39,7 @@ export class BF888Driver implements RadioDriver {
     await this.backend.open();
 
     await this.backend.write(encodeCommand('\x02PROGRAM'));
-    const ack = await this.readByte();
-    if (ack !== ACK) {
-      throw new Error(`Unexpected ACK after PROGRAM: 0x${ack.toString(16)}`);
-    }
+    await this.readUntilAck('PROGRAM');
 
     await this.backend.write(new Uint8Array([0x02]));
     const identBytes = await this.backend.readExactly(8, 2000);
@@ -52,10 +49,7 @@ export class BF888Driver implements RadioDriver {
     }
 
     await this.backend.write(new Uint8Array([ACK]));
-    const ack2 = await this.readByte();
-    if (ack2 !== ACK) {
-      throw new Error(`Unexpected ACK after ident: 0x${ack2.toString(16)}`);
-    }
+    await this.readUntilAck('ident');
 
     this.connected = true;
   }
@@ -117,10 +111,7 @@ export class BF888Driver implements RadioDriver {
 
     const data = response.slice(4);
     await this.backend.write(new Uint8Array([ACK]));
-    const ack = await this.readByte();
-    if (ack !== ACK) {
-      throw new Error(`Unexpected ACK after read: 0x${ack.toString(16)}`);
-    }
+    await this.readUntilAck(`read 0x${address.toString(16)}`);
 
     return data;
   }
@@ -136,15 +127,28 @@ export class BF888Driver implements RadioDriver {
     payload.set(data, header.length);
 
     await this.backend.write(payload);
-    const ack = await this.readByte();
-    if (ack !== ACK) {
-      throw new Error(`Unexpected ACK after write: 0x${ack.toString(16)}`);
-    }
+    await this.readUntilAck(`write 0x${address.toString(16)}`);
   }
 
-  private async readByte(): Promise<number> {
-    const data = await this.backend.readExactly(1, 2000);
-    return data[0];
+  private async readUntilAck(context: string, timeoutMs = 2000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    const seen: number[] = [];
+
+    while (Date.now() < deadline) {
+      const remaining = Math.max(1, deadline - Date.now());
+      const data = await this.backend.readExactly(1, remaining);
+      const value = data[0];
+      if (value === ACK) {
+        return;
+      }
+      seen.push(value);
+    }
+
+    throw new Error(
+      `Timed out waiting for ACK after ${context}. Saw: ${seen
+        .map(byte => `0x${byte.toString(16)}`)
+        .join(' ')}`
+    );
   }
 
   private ensureConnected() {

@@ -18,15 +18,17 @@ describeIf('BF-888 programming (hardware)', () => {
     const driver = factory.createRadio(radioModel, createBackend(portPath));
 
     await driver.connect();
-    const codeplug = await driver.readCodeplug();
-    expect(codeplug).toBeInstanceOf(Uint8Array);
-    expect(codeplug.length).toBeGreaterThan(0);
+    try {
+      const codeplug = await driver.readCodeplug();
+      expect(codeplug).toBeInstanceOf(Uint8Array);
+      expect(codeplug.length).toBeGreaterThan(0);
 
-    if (programmingEnabled) {
-      await driver.writeCodeplug(codeplug);
+      if (programmingEnabled) {
+        await driver.writeCodeplug(codeplug);
+      }
+    } finally {
+      await driver.disconnect();
     }
-
-    await driver.disconnect();
   });
 
   itIfWrite('writes and verifies a synthesized full-channel codeplug', async () => {
