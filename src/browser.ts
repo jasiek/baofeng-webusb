@@ -8,3 +8,4 @@ export type {
   SerialBackendOptions
 } from './core';
 export type { BF888DriverOptions, ChecksumValidator } from './drivers/bf888';
+export type { KT8900DriverOptions } from './drivers/kt8900';

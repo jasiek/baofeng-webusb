@@ -1,10 +1,7 @@
 import { factory, WebSerialBackend } from '../src/browser';
-import {
-  runDownloadScenario,
-  runUploadScenario,
-  runSynthWriteVerifyScenario,
-  SessionRunner
-} from '../src/scenarios/bf888';
+import type { RadioDriver, RadioModel } from '../src/core';
+import * as bf888Scenario from '../src/scenarios/bf888';
+import * as kt8900Scenario from '../src/scenarios/kt8900';
 
 const statusEl = document.getElementById('status') as HTMLDivElement;
 const selectBtn = document.getElementById('selectPort') as HTMLButtonElement;
@@ -39,11 +36,12 @@ selectBtn.addEventListener('click', async () => {
 
 downloadBtn.addEventListener('click', async () => {
   if (!port) return;
-  const model = modelSelect.value as 'bf-888';
+  const model = modelSelect.value as RadioModel;
+  const scenario = getScenario(model);
 
   const runSession = createSessionRunner(port, model);
   try {
-    const data = await runDownloadScenario(runSession, { log });
+    const data = await scenario.runDownloadScenario(runSession, { log });
     saveBlob(data, `${model}-codeplug.bin`);
   } catch (err) {
     log(`Operation failed: ${stringifyError(err)}`);
@@ -57,13 +55,14 @@ uploadBtn.addEventListener('click', async () => {
     log('Select a firmware/codeplug file first.');
     return;
   }
-  const model = modelSelect.value as 'bf-888';
+  const model = modelSelect.value as RadioModel;
+  const scenario = getScenario(model);
 
   const buffer = await file.arrayBuffer();
   const data = new Uint8Array(buffer);
   const runSession = createSessionRunner(port, model);
   try {
-    await runUploadScenario(runSession, data, { log });
+    await scenario.runUploadScenario(runSession, data, { log });
   } catch (err) {
     log(`Operation failed: ${stringifyError(err)}`);
   }
@@ -71,16 +70,19 @@ uploadBtn.addEventListener('click', async () => {
 
 testBtn.addEventListener('click', async () => {
   if (!port) return;
-  const model = modelSelect.value as 'bf-888';
+  const model = modelSelect.value as RadioModel;
+  const scenario = getScenario(model);
   const runSession = createSessionRunner(port, model);
   try {
-    await runSynthWriteVerifyScenario(runSession, { log });
+    await scenario.runSynthWriteVerifyScenario(runSession, { log });
   } catch (err) {
     log(`Operation failed: ${stringifyError(err)}`);
   }
 });
 
-function createSessionRunner(port: SerialPort, model: 'bf-888'): SessionRunner {
+type SessionRunner = <T>(fn: (driver: RadioDriver) => Promise<T>) => Promise<T>;
+
+function createSessionRunner(port: SerialPort, model: RadioModel): SessionRunner {
   return async fn => {
     const backend = new WebSerialBackend(port, { baudRate: 9600 });
     const driver = factory.createRadio(model, backend, {
@@ -112,4 +114,14 @@ function saveBlob(data: Uint8Array, filename: string) {
 function stringifyError(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);
+}
+
+function getScenario(model: RadioModel) {
+  switch (model) {
+    case 'kt-8900':
+      return kt8900Scenario;
+    case 'bf-888':
+    default:
+      return bf888Scenario;
+  }
 }

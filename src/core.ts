@@ -1,4 +1,4 @@
-export type RadioModel = 'bf-888';
+export type RadioModel = 'bf-888' | 'kt-8900';
 
 export interface SerialBackendOptions {
   path: string;
@@ -30,6 +30,10 @@ export const factory: RadioFactory = {
     if (model === 'bf-888') {
       const { BF888Driver } = require('./drivers/bf888');
       return new BF888Driver(backend, options as import('./drivers/bf888').BF888DriverOptions);
+    }
+    if (model === 'kt-8900') {
+      const { KT8900Driver } = require('./drivers/kt8900');
+      return new KT8900Driver(backend, options as import('./drivers/kt8900').KT8900DriverOptions);
     }
     throw new NotImplementedError(`Unsupported radio model: ${model}`);
   }
