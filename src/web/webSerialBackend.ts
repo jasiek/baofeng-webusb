@@ -1,4 +1,4 @@
-import type { RadioBackend } from '../index';
+import type { RadioBackend } from '../core';
 
 interface WebSerialBackendOptions {
   baudRate?: number;

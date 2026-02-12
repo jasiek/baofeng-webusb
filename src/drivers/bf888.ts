@@ -1,4 +1,4 @@
-import type { RadioBackend, RadioDriver } from '../index';
+import type { RadioBackend, RadioDriver } from '../core';
 
 const ACK = 0x06;
 const BLOCK_SIZE = 8;

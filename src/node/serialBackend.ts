@@ -1,5 +1,5 @@
 import { SerialPort } from 'serialport';
-import type { RadioBackend, SerialBackendOptions } from '../index';
+import type { RadioBackend, SerialBackendOptions } from '../core';
 
 export class NodeSerialBackend implements RadioBackend {
   private port: SerialPort;
