@@ -30,28 +30,38 @@ export class BF888Driver implements RadioDriver {
     this.backend = backend;
     const envDryRun =
       typeof process !== 'undefined' && process.env && process.env.BF888_DRY_RUN === '1';
+    const envLog =
+      typeof process !== 'undefined' && process.env && process.env.BF888_LOG === '1';
     this.dryRun = options.dryRun ?? envDryRun;
-    this.log = options.log ?? (this.dryRun ? (msg: string) => console.log(msg) : () => {});
+    const shouldLog = this.dryRun || envLog;
+    this.log = options.log ?? (shouldLog ? (msg: string) => console.log(msg) : () => {});
     this.checksumValidators = options.checksumValidators ?? [];
   }
 
   async connect(): Promise<void> {
     await this.backend.open();
+    try {
+      this.log('BF888: sending PROGRAM');
+      await this.backend.write(encodeCommand('\x02PROGRAM'));
+      await this.readUntilAck('PROGRAM');
 
-    await this.backend.write(encodeCommand('\x02PROGRAM'));
-    await this.readUntilAck('PROGRAM');
+      this.log('BF888: requesting ident');
+      await this.backend.write(new Uint8Array([0x02]));
+      const identBytes = await this.backend.readExactly(8, 2000);
+      const ident = decodeAscii(identBytes);
+      this.log(`BF888: ident ${ident}`);
+      if (!ident.startsWith(IDENT_PREFIX)) {
+        throw new Error(`Unexpected ident string: ${ident}`);
+      }
 
-    await this.backend.write(new Uint8Array([0x02]));
-    const identBytes = await this.backend.readExactly(8, 2000);
-    const ident = decodeAscii(identBytes);
-    if (!ident.startsWith(IDENT_PREFIX)) {
-      throw new Error(`Unexpected ident string: ${ident}`);
+      await this.backend.write(new Uint8Array([ACK]));
+      await this.readUntilAck('ident');
+
+      this.connected = true;
+    } catch (err) {
+      await this.backend.close().catch(() => undefined);
+      throw err;
     }
-
-    await this.backend.write(new Uint8Array([ACK]));
-    await this.readUntilAck('ident');
-
-    this.connected = true;
   }
 
   async disconnect(): Promise<void> {
@@ -136,7 +146,13 @@ export class BF888Driver implements RadioDriver {
 
     while (Date.now() < deadline) {
       const remaining = Math.max(1, deadline - Date.now());
-      const data = await this.backend.readExactly(1, remaining);
+      let data: Uint8Array;
+      try {
+        data = await this.backend.readExactly(1, remaining);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new Error(`Failed waiting for ACK after ${context}: ${message}`);
+      }
       const value = data[0];
       if (value === ACK) {
         return;
