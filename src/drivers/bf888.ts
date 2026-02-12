@@ -28,12 +28,8 @@ export class BF888Driver implements RadioDriver {
 
   constructor(backend: RadioBackend, options: BF888DriverOptions = {}) {
     this.backend = backend;
-    const envDryRun =
-      typeof process !== 'undefined' && process.env && process.env.BF888_DRY_RUN === '1';
-    const envLog =
-      typeof process !== 'undefined' && process.env && process.env.BF888_LOG === '1';
-    this.dryRun = options.dryRun ?? envDryRun;
-    const shouldLog = this.dryRun || envLog;
+    this.dryRun = options.dryRun ?? false;
+    const shouldLog = this.dryRun || !!options.log;
     this.log = options.log ?? (shouldLog ? (msg: string) => console.log(msg) : () => {});
     this.checksumValidators = options.checksumValidators ?? [];
   }
