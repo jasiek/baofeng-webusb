@@ -17,17 +17,18 @@ describeIf('BF-888 programming (hardware)', () => {
 
     const driver = factory.createRadio(radioModel, createBackend(portPath));
 
-    await driver.connect();
-    try {
-      const codeplug = await driver.readCodeplug();
-      expect(codeplug).toBeInstanceOf(Uint8Array);
-      expect(codeplug.length).toBeGreaterThan(0);
+    const codeplug = await withSession(driver, async session => {
+      const data = await session.readCodeplug();
+      expect(data).toBeInstanceOf(Uint8Array);
+      expect(data.length).toBeGreaterThan(0);
+      return data;
+    });
 
-      if (programmingEnabled) {
-        await driver.writeCodeplug(codeplug);
-      }
-    } finally {
-      await driver.disconnect();
+    if (programmingEnabled) {
+      const writer = factory.createRadio(radioModel, createBackend(portPath));
+      await withSession(writer, async session => {
+        await session.writeCodeplug(codeplug);
+      });
     }
   });
 
@@ -36,31 +37,41 @@ describeIf('BF-888 programming (hardware)', () => {
       throw new Error('SERIAL_PORT is required when HARDWARE_TESTS=1');
     }
 
-    const driver = factory.createRadio(radioModel, createBackend(portPath));
+    const reader = factory.createRadio(radioModel, createBackend(portPath));
+    const original = await withSession(reader, session => session.readCodeplug());
 
-    await driver.connect();
-    try {
-      const original = await driver.readCodeplug();
-      const synthesized = synthesizeFullCodeplug(original);
+    const synthesized = synthesizeFullCodeplug(original);
 
-      await driver.writeCodeplug(synthesized);
+    const writer = factory.createRadio(radioModel, createBackend(portPath));
+    await withSession(writer, session => session.writeCodeplug(synthesized));
 
-      const readBack = await driver.readCodeplug();
+    const verifier = factory.createRadio(radioModel, createBackend(portPath));
+    const readBack = await withSession(verifier, session => session.readCodeplug());
 
-      for (let channel = 0; channel < CHANNEL_COUNT; channel += 1) {
-        const offset = CHANNEL_BASE + channel * CHANNEL_SIZE;
-        const expected = synthesized.slice(offset, offset + CHANNEL_SIZE);
-        const actual = readBack.slice(offset, offset + CHANNEL_SIZE);
-        expect(actual).toEqual(expected);
-      }
-    } finally {
-      await driver.disconnect();
+    for (let channel = 0; channel < CHANNEL_COUNT; channel += 1) {
+      const offset = CHANNEL_BASE + channel * CHANNEL_SIZE;
+      const expected = synthesized.slice(offset, offset + CHANNEL_SIZE);
+      const actual = readBack.slice(offset, offset + CHANNEL_SIZE);
+      expect(actual).toEqual(expected);
     }
   });
 });
 
 function createBackend(path: string) {
   return new NodeSerialBackend({ path, baudRate: 9600 });
+}
+
+async function withSession<T>(
+  driver: ReturnType<typeof factory.createRadio>,
+  fn: (driver: ReturnType<typeof factory.createRadio>) => Promise<T>
+): Promise<T> {
+  await driver.connect();
+  try {
+    return await fn(driver);
+  } finally {
+    await driver.disconnect();
+    await delay(200);
+  }
 }
 
 const CHANNEL_COUNT = 16;
@@ -126,4 +137,8 @@ function encodeLbcdFrequency(freqHz: number): Uint8Array {
   }
 
   return bytes;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
