@@ -34,6 +34,9 @@ export class NodeSerialBackend implements RadioBackend {
     await new Promise<void>((resolve, reject) => {
       this.port.write(data, err => (err ? reject(err) : resolve()));
     });
+    await new Promise<void>((resolve, reject) => {
+      this.port.drain(err => (err ? reject(err) : resolve()));
+    });
   }
 
   async readExactly(length: number, timeoutMs = 1000): Promise<Uint8Array> {
