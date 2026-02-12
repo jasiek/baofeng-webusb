@@ -42,7 +42,9 @@ export class BF888Driver implements RadioDriver {
     await this.backend.open();
     try {
       this.log('BF888: sending PROGRAM');
-      await this.backend.write(encodeCommand('\x02PROGRAM'));
+      await this.backend.write(new Uint8Array([0x02]));
+      await delay(100);
+      await this.backend.write(encodeCommand('PROGRAM'));
       await this.readUntilAck('PROGRAM');
 
       this.log('BF888: requesting ident');
@@ -209,4 +211,8 @@ function bufferToHex(data: Uint8Array): string {
   return Array.from(data)
     .map(byte => byte.toString(16).padStart(2, '0'))
     .join(' ');
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
