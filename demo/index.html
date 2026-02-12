@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Baofeng Programmer Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "SF Mono", "JetBrains Mono", "Menlo", monospace;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #f4f1ea;
+        color: #1a1a1a;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        background: #fffdfa;
+        border: 2px solid #1a1a1a;
+        padding: 24px;
+        box-shadow: 8px 8px 0 #1a1a1a;
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 24px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: 16px 0;
+      }
+      button, select, input[type="file"] {
+        font: inherit;
+        padding: 8px 12px;
+        border: 2px solid #1a1a1a;
+        background: #fffcf5;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      #status {
+        white-space: pre-wrap;
+        background: #f0ede6;
+        padding: 12px;
+        border: 1px dashed #1a1a1a;
+        min-height: 80px;
+      }
+      .hint {
+        font-size: 12px;
+        color: #444;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Baofeng Programmer Demo</h1>
+      <p class="hint">
+        Use Chrome or Edge (WebSerial enabled). Connect your radio cable and turn the
+        radio on in programming mode.
+      </p>
+
+      <div class="row">
+        <label for="model">Radio model</label>
+        <select id="model">
+          <option value="bf-888">Baofeng BF-888</option>
+        </select>
+        <button id="selectPort">Select USB/Serial Port</button>
+      </div>
+
+      <div class="row">
+        <button id="download" disabled>Download Codeplug</button>
+        <button id="upload" disabled>Upload Codeplug</button>
+        <input id="file" type="file" accept=".bin,.img,application/octet-stream" />
+      </div>
+
+      <div id="status">Ready.</div>
+    </main>
+
+    <script type="module" src="/dist/app.js"></script>
+  </body>
+</html>

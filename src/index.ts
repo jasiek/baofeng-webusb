@@ -39,3 +39,4 @@ export const factory: RadioFactory = {
 
 export { NodeSerialBackend } from './node/serialBackend';
 export type { BF888DriverOptions, ChecksumValidator } from './drivers/bf888';
+export { WebSerialBackend } from './web/webSerialBackend';
